@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "DocumentMeta": {
+      "title": "DocumentMeta",
+      "description": "Metadata for a secure document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "size": { "type": "number" },
+        "encryptionCheck": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "name", "type", "size", "encryptionCheck", "createdAt", "updatedAt"]
+    },
+    "DocumentChunk": {
+      "title": "DocumentChunk",
+      "description": "A chunk of encrypted document data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "data": { "type": "string" },
+        "index": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "data", "index", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/DocumentMeta" },
+      "description": "User's encrypted documents"
+    },
+    "/users/{userId}/documents/{documentId}/chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/DocumentChunk" },
+      "description": "User's document chunks"
+    }
+  }
+}

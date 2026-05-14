@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+
+    function isValidDocumentMeta(data) {
+      return data.keys().hasAll(['userId', 'name', 'type', 'size', 'encryptionCheck', 'createdAt', 'updatedAt']) &&
+             data.keys().size() == 7 &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 500 &&
+             data.type is string && data.type.size() <= 100 &&
+             data.size is number &&
+             data.encryptionCheck is string && data.encryptionCheck.size() <= 2000 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidDocumentChunk(data) {
+      return data.keys().hasAll(['userId', 'data', 'index', 'createdAt']) &&
+             data.keys().size() == 4 &&
+             data.userId == request.auth.uid &&
+             data.data is string && data.data.size() <= 900000 &&
+             data.index is number &&
+             data.createdAt is timestamp;
+    }
+
+    match /users/{userId}/documents/{documentId} {
+      allow read, delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId);
+      allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId) &&
+                    isValidDocumentMeta(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId) &&
+                    isValidDocumentMeta(incoming()) &&
+                    incoming().updatedAt == request.time &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']);
+    }
+
+    match /users/{userId}/documents/{documentId}/chunks/{chunkId} {
+      allow read, delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId) && isValidId(chunkId);
+      allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId);
+
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(documentId) && isValidId(chunkId) &&
+                    isValidDocumentChunk(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    existsAfter(/databases/$(database)/documents/users/$(userId)/documents/$(documentId));
+      
+      allow update: if false;
+    }
+  }
+}

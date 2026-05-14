@@ -1,0 +1,6 @@
+{
+  "name": "Secure Local Vault",
+  "description": "A secure, client-side encrypted document vault for personal documents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
